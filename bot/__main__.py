@@ -12,6 +12,7 @@ from pytz import timezone
 
 from . import LOGGER, bot_loop
 from .core.tg_client import TgClient
+from .core.config_manager import Config as _Config
 
 
 async def main():
@@ -86,6 +87,17 @@ async def main():
 
     await gather(*gather_tasks)
 
+
+# ── Disable unused heavy services to save memory ──────────────────────────
+# To re-enable: set the value back or add config var
+_Config.MEGA_EMAIL = ""           # Mega disabled - set MEGA_EMAIL to enable
+_Config.MEGA_PASSWORD = ""        # Mega disabled
+_Config.JD_EMAIL = ""             # JDownloader disabled - set JD_EMAIL to enable
+_Config.JD_PASS = ""              # JDownloader disabled
+_Config.USENET_SERVERS = []       # SABnzbd disabled - set USENET_SERVERS to enable
+_Config.SEARCH_PLUGINS = []       # Search plugins disabled - saves memory
+_Config.DISABLE_SEED = True       # Seeding disabled - saves memory & bandwidth
+# ────────────────────────────────────────────────────────────────────────────
 
 bot_loop.run_until_complete(main())
 
