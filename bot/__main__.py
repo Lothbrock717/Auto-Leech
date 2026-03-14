@@ -57,7 +57,6 @@ async def main():
         update_aria2_options(),
         update_nzb_options(),
     )
-    from .core.jdownloader_booter import jdownloader
     from .helper.ext_utils.files_utils import clean_all
     from .helper.ext_utils.telegraph_helper import telegraph
     from .helper.mirror_leech_utils.rclone_utils.serve import rclone_serve_booter
@@ -67,16 +66,25 @@ async def main():
         restart_notification,
     )
 
-    await gather(
+    gather_tasks = [
         save_settings(),
-        jdownloader.boot(),
         clean_all(),
         initiate_search_tools(),
         get_packages_version(),
         restart_notification(),
         telegraph.create_account(),
         rclone_serve_booter(),
-    )
+    ]
+
+    # Only boot JDownloader if credentials are configured
+    if Config.JD_EMAIL and Config.JD_PASS:
+        from .core.jdownloader_booter import jdownloader
+        gather_tasks.append(jdownloader.boot())
+        LOGGER.info("JDownloader boot initiated.")
+    else:
+        LOGGER.info("JDownloader skipped (JD_EMAIL/JD_PASS not set).")
+
+    await gather(*gather_tasks)
 
 
 bot_loop.run_until_complete(main())
