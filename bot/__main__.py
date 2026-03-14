@@ -96,6 +96,10 @@ plugin_manager = get_plugin_manager()
 plugin_manager.bot = TgClient.bot
 register_plugin_commands()
 
+# Auto-load all plugins on startup
+for _plugin in plugin_manager.discover_plugins():
+    bot_loop.run_until_complete(plugin_manager.load_plugin(_plugin))
+
 from pyrogram.filters import regex
 from pyrogram.handlers import CallbackQueryHandler
 
