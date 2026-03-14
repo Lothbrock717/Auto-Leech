@@ -13,8 +13,9 @@ from cloudscraper import create_scraper
 from pyrogram.handlers import MessageHandler
 from pyrogram.filters import command
 
-from bot import bot, bot_loop, LOGGER
+from bot import bot_loop, LOGGER
 from bot.core.config_manager import Config
+from bot.core.tg_client import TgClient
 from bot.core.plugin_manager import PluginBase, PluginInfo
 from bot.helper.telegram_helper.filters import CustomFilters
 from bot.helper.ext_utils.bot_utils import new_task
@@ -112,7 +113,7 @@ async def _process_feed(rss_url, keyword):
     grp_id = _get_group_id()
     if not grp_id:
         return
-    bot_info = await bot.get_me()
+    bot_info = await TgClient.bot.get_me()
     thumb    = thumbs_col.find_one({"_id": bot_info.id})
     feed     = feedparser.parse(rss_url)
     if not feed.entries:
@@ -130,10 +131,10 @@ async def _process_feed(rss_url, keyword):
         magnets  = soup.select('a[href^="magnet:?xt=urn:btih:"]')
         torrents = soup.select('a[data-fileext="torrent"]')
         title    = soup.title.string if soup.title else "Unknown"
-        title_msg = await bot.send_message(grp_id,
+        title_msg = await TgClient.bot.send_message(grp_id,
             f"🎬 <b><u>{title}</u></b>\n\n— Auto Leech by WZML-X")
         try:
-            await bot.pin_chat_message(grp_id, title_msg.id)
+            await TgClient.bot.pin_chat_message(grp_id, title_msg.id)
         except Exception:
             pass
         for t, m in zip(torrents, magnets):
@@ -143,24 +144,24 @@ async def _process_feed(rss_url, keyword):
             file_name  = f"{fname}.torrent"
             caption    = f"🧲 <b>{file_name}</b>\n\n🔗 {paste_link}"
             if not _download_torrent(t["href"], file_name):
-                await bot.send_message(grp_id, f"❌ Failed: {caption}")
+                await TgClient.bot.send_message(grp_id, f"❌ Failed: {caption}")
                 continue
             await asyncio.sleep(3)
-            filee = await bot.send_document(chat_id=grp_id, document=file_name, caption=caption)
+            filee = await TgClient.bot.send_document(chat_id=grp_id, document=file_name, caption=caption)
             os.remove(file_name)
             dump_arg  = f" -dump {_get_dump_id()}" if _get_dump_id() else ""
             thumb_arg = f" -t {thumb['url']}" if thumb else ""
             try:
                 leech_msg = await filee.reply_text(f"/qbleech{thumb_arg}{dump_arg}")
                 bot_loop.create_task(
-                    Mirror(bot, leech_msg, is_qbit=True, is_leech=True).new_event()
+                    Mirror(TgClient.bot, leech_msg, is_qbit=True, is_leech=True).new_event()
                 )
                 await asyncio.sleep(BB_DELAY)
                 await leech_msg.delete()
             except Exception as e:
                 await filee.reply_text(f"❌ Leech error: {e}")
         rss_collection.update_one({"keyword": keyword}, {"$set": {"url": first_link}})
-        await bot.send_sticker(grp_id,
+        await TgClient.bot.send_sticker(grp_id,
             "CAACAgUAAxkBAAIjxGY75nsXUSCCFO6LB-KiGRPC5kiuAAJzBgACJggpVXKB2uxzC9oxHgQ")
     except Exception as e:
         LOGGER.error(f"[AutoLeech] Feed error: {e}")
@@ -231,7 +232,7 @@ async def cmd_scrape(client, message):
     if not grp_id:
         return await message.reply_text("❌ AUTO_LEECH_GRP_ID not set!")
     url      = parts[1].strip()
-    bot_info = await bot.get_me()
+    bot_info = await TgClient.bot.get_me()
     thumb    = thumbs_col.find_one({"_id": bot_info.id})
     await message.reply_text(f"🔍 Scraping: {url}")
     try:
@@ -251,14 +252,14 @@ async def cmd_scrape(client, message):
                 await message.reply_text(f"❌ Failed: {file_name}")
                 continue
             await asyncio.sleep(3)
-            filee = await bot.send_document(chat_id=grp_id, document=file_name, caption=caption)
+            filee = await TgClient.bot.send_document(chat_id=grp_id, document=file_name, caption=caption)
             os.remove(file_name)
             dump_arg  = f" -dump {_get_dump_id()}" if _get_dump_id() else ""
             thumb_arg = f" -t {thumb['url']}" if thumb else ""
             try:
                 leech_msg = await filee.reply_text(f"/qbleech{thumb_arg}{dump_arg}")
                 bot_loop.create_task(
-                    Mirror(bot, leech_msg, is_qbit=True, is_leech=True).new_event()
+                    Mirror(TgClient.bot, leech_msg, is_qbit=True, is_leech=True).new_event()
                 )
                 await asyncio.sleep(BB_DELAY)
                 await leech_msg.delete()
@@ -271,7 +272,7 @@ async def cmd_scrape(client, message):
 async def cmd_add_thumb(client, message):
     if not message.reply_to_message or not message.reply_to_message.photo:
         return await message.reply_text("⚠️ Reply to a photo to set as thumbnail.")
-    bot_id    = (await bot.get_me()).id
+    bot_id    = (await TgClient.bot.get_me()).id
     file_path = await message.reply_to_message.download()
     url       = _upload_to_imgbb(file_path)
     os.remove(file_path)
@@ -282,7 +283,7 @@ async def cmd_add_thumb(client, message):
 
 @new_task
 async def cmd_show_thumb(client, message):
-    bot_id = (await bot.get_me()).id
+    bot_id = (await TgClient.bot.get_me()).id
     data   = thumbs_col.find_one({"_id": bot_id})
     if not data:
         return await message.reply_text("❌ No thumbnail found.")
@@ -290,7 +291,7 @@ async def cmd_show_thumb(client, message):
 
 @new_task
 async def cmd_del_thumb(client, message):
-    bot_id = (await bot.get_me()).id
+    bot_id = (await TgClient.bot.get_me()).id
     result = thumbs_col.delete_one({"_id": bot_id})
     if result.deleted_count == 0:
         return await message.reply_text("❌ No thumbnail to delete.")
@@ -308,13 +309,13 @@ class AutoLeechPlugin(PluginBase):
 
     async def on_load(self) -> bool:
         sudo = CustomFilters.sudo
-        bot.add_handler(MessageHandler(cmd_auto_leech_help, filters=command("auto_leech") & sudo))
-        bot.add_handler(MessageHandler(cmd_setdomain,       filters=command("setd")        & sudo))
-        bot.add_handler(MessageHandler(cmd_getdomains,      filters=command("getd")        & sudo))
-        bot.add_handler(MessageHandler(cmd_scrape,          filters=command("scrape")      & sudo))
-        bot.add_handler(MessageHandler(cmd_add_thumb,       filters=command("add_thumb")   & sudo))
-        bot.add_handler(MessageHandler(cmd_show_thumb,      filters=command("show_thumb")  & sudo))
-        bot.add_handler(MessageHandler(cmd_del_thumb,       filters=command("del_thumb")   & sudo))
+        TgClient.bot.add_handler(MessageHandler(cmd_auto_leech_help, filters=command("auto_leech") & sudo))
+        TgClient.bot.add_handler(MessageHandler(cmd_setdomain,       filters=command("setd")        & sudo))
+        TgClient.bot.add_handler(MessageHandler(cmd_getdomains,      filters=command("getd")        & sudo))
+        TgClient.bot.add_handler(MessageHandler(cmd_scrape,          filters=command("scrape")      & sudo))
+        TgClient.bot.add_handler(MessageHandler(cmd_add_thumb,       filters=command("add_thumb")   & sudo))
+        TgClient.bot.add_handler(MessageHandler(cmd_show_thumb,      filters=command("show_thumb")  & sudo))
+        TgClient.bot.add_handler(MessageHandler(cmd_del_thumb,       filters=command("del_thumb")   & sudo))
         bot_loop.create_task(_rss_loop())
         LOGGER.info("[AutoLeech] Plugin loaded successfully!")
         return True
