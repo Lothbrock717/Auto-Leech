@@ -62,6 +62,7 @@ class Config:
     ARCHIVE_LIMIT = 0
     STORAGE_LIMIT = 0
     LEECH_DUMP_CHAT = ""
+    AUTO_LEECH_GRP_ID = ""  # Group ID for auto leecher to send files
     LINKS_LOG_ID = ""
     MIRROR_LOG_ID = ""
     CLEAN_LOG_MSG = False
@@ -252,7 +253,7 @@ class Config:
 
 class BinConfig:
     ARIA2_NAME = "blitzfetcher"
-    QBIT_NAME = "stormtorrent"
+    QBIT_NAME = "qbittorrent-nox"
     FFMPEG_NAME = "mediaforge"
     RCLONE_NAME = "ghostdrive"
     SABNZBD_NAME = "newsripper"
