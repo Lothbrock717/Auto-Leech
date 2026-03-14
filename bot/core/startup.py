@@ -32,12 +32,13 @@ from .torrent_manager import TorrentManager
 
 
 async def update_qb_options():
+    if Config.DISABLE_TORRENTS:
+        LOGGER.info("qBittorrent skipped (DISABLE_TORRENTS=True).")
+        return
     LOGGER.info("Get qBittorrent options from server")
     if not qbit_options:
         if not TorrentManager.qbittorrent:
-            LOGGER.warning(
-                "qBittorrent is not initialized. Skipping qBittorrent options update."
-            )
+            LOGGER.warning("qBittorrent is not initialized. Skipping.")
             return
         opt = await TorrentManager.qbittorrent.app.preferences()
         qbit_options.update(opt)
