@@ -59,6 +59,7 @@ ffset_options = [
     "VIDEO_METADATA",
     "SUBTITLE_METADATA",
 ]
+autoleech_options = ["AL_GRP_ID", "AL_DUMP_ID", "AL_TMV_DOMAIN", "AL_TBL_DOMAIN"]
 advanced_options = [
     "EXCLUDED_EXTENSIONS",
     "NAME_SWAP",
@@ -262,6 +263,26 @@ Here I will explain how to use mltb.* which is reference to files you want to wo
         "User's YT-DLP Cookie File to authenticate access to websites and youtube.",
         "<i>Send your cookie file (e.g., cookies.txt or abc.txt).</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
     ),
+    "AL_GRP_ID": (
+        "Chat ID",
+        "Auto Leech Group/Channel ID where new releases will be posted and leeched.",
+        "<i>Send the Group or Channel ID for Auto Leech (e.g. -1001234567890).</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+    ),
+    "AL_DUMP_ID": (
+        "Chat ID",
+        "Auto Leech Dump Channel ID where leeched files will be uploaded.",
+        "<i>Send the Dump Channel ID for Auto Leech (e.g. -1001234567890).</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+    ),
+    "AL_TMV_DOMAIN": (
+        "URL",
+        "1TamilMV domain URL for Auto Leech RSS scraping.",
+        "<i>Send the 1TamilMV domain URL (e.g. https://www.1tamilmv.xxx).</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+    ),
+    "AL_TBL_DOMAIN": (
+        "URL",
+        "1TamilBlasters domain URL for Auto Leech RSS scraping.",
+        "<i>Send the 1TamilBlasters domain URL (e.g. https://www.1tamilblasters.fi).</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+    ),
     "GOFILE_TOKEN": (
         "String",
         "Gofile API Token",
@@ -309,6 +330,7 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button(
             "Mics Settings", f"userset {user_id} advanced", position="l_body"
         )
+        buttons.data_button("Auto Leech Settings", f"userset {user_id} autoleech")
 
         if user_dict and any(
             key in user_dict
@@ -920,6 +942,42 @@ async def get_user_settings(from_user, stype="main"):
 ┠ <b>YT Category ID</b> → <code>{escape(str(yt_cat_id_val))}</code>
 ┖ <b>YT Privacy Status</b> → <code>{escape(str(yt_privacy_val))}</code>"""
 
+    elif stype == "autoleech":
+        from pymongo import MongoClient
+        from pymongo.server_api import ServerApi
+        _al_client = MongoClient(Config.DATABASE_URL, server_api=ServerApi("1"))
+        _al_db = _al_client.autoleech_wzmlx
+
+        def _al_get(key):
+            doc = _al_db["al_settings"].find_one({"_id": key})
+            return doc["value"] if doc else None
+
+        def _al_get_domains():
+            return list(_al_db["rss_domains"].find({}))
+
+        grp_id  = _al_get("AUTO_LEECH_GRP_ID")  or "Not Set"
+        dump_id = _al_get("AUTO_LEECH_DUMP_ID") or "Not Set"
+        domains = _al_get_domains()
+        domain_text = "\n".join([f"┠ <code>{d['name']}</code> → {d['url']}" for d in domains]) if domains else "┠ None"
+
+        buttons.data_button("Set Leech Group",   f"userset {user_id} menu AL_GRP_ID")
+        buttons.data_button("Set Dump Channel",  f"userset {user_id} menu AL_DUMP_ID")
+        buttons.data_button("Set TMV Domain",    f"userset {user_id} menu AL_TMV_DOMAIN")
+        buttons.data_button("Set TBL Domain",    f"userset {user_id} menu AL_TBL_DOMAIN")
+        buttons.data_button("Back", f"userset {user_id} back", "footer")
+        buttons.data_button("Close", f"userset {user_id} close", "footer")
+        btns = buttons.build_menu(2)
+
+        text = f"""⌬ <b>Auto Leech Settings :</b>
+┟ <b>Name</b> → {user_name}
+┃
+┠ <b>Leech Group ID</b> → <code>{grp_id}</code>
+┠ <b>Dump Channel ID</b> → <code>{dump_id}</code>
+┃
+┠ <b>Domains:</b>
+{domain_text}
+"""
+
     return text, btns
 
 
@@ -1091,6 +1149,26 @@ async def set_option(_, message, option, rfunc):
         else:
             await send_message(message, "It must be dict!")
             return
+    if option in ["AL_GRP_ID", "AL_DUMP_ID", "AL_TMV_DOMAIN", "AL_TBL_DOMAIN"]:
+        from pymongo import MongoClient
+        from pymongo.server_api import ServerApi
+        _al_client = MongoClient(Config.DATABASE_URL, server_api=ServerApi("1"))
+        _al_db = _al_client.autoleech_wzmlx
+        key_map = {
+            "AL_GRP_ID": "AUTO_LEECH_GRP_ID",
+            "AL_DUMP_ID": "AUTO_LEECH_DUMP_ID",
+            "AL_TMV_DOMAIN": "tmv",
+        }
+        if option == "AL_TMV_DOMAIN":
+            _al_db["rss_domains"].update_one({"name": "tmv"}, {"$set": {"url": value, "title": "tmv"}}, upsert=True)
+        elif option == "AL_TBL_DOMAIN":
+            _al_db["rss_domains"].update_one({"name": "tbl"}, {"$set": {"url": value, "title": "tbl"}}, upsert=True)
+        else:
+            db_key = key_map.get(option, option)
+            _al_db["al_settings"].update_one({"_id": db_key}, {"$set": {"value": value}}, upsert=True)
+        await delete_message(message)
+        await rfunc()
+        return
     update_user_ldata(user_id, option, value)
     await delete_message(message)
     await rfunc()
@@ -1144,6 +1222,8 @@ async def get_menu(option, message, user_id):
         back_to = "yttools"
     elif option in ffset_options:
         back_to = "ffset"
+    elif option in autoleech_options:
+        back_to = "autoleech"
     elif option in advanced_options:
         back_to = "advanced"
     else:
@@ -1271,6 +1351,7 @@ async def edit_user_settings(client, query):
         "advanced",
         "gdrive",
         "rclone",
+        "autoleech",
     ]:
         await query.answer()
         await update_user_settings(query, data[2])
