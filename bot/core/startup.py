@@ -63,16 +63,18 @@ async def update_aria2_options():
 
 
 async def update_nzb_options():
-    if Config.USENET_SERVERS:
-        LOGGER.info("Get SABnzbd options from server")
-        while True:
-            try:
-                no = (await sabnzbd_client.get_config())["config"]["misc"]
-                nzb_options.update(no)
-            except Exception:
-                await sleep(0.5)
-                continue
-            break
+    if not Config.USENET_SERVERS:
+        LOGGER.info("SABnzbd skipped - USENET_SERVERS not set.")
+        return
+    LOGGER.info("Get SABnzbd options from server")
+    while True:
+        try:
+            no = (await sabnzbd_client.get_config())["config"]["misc"]
+            nzb_options.update(no)
+        except Exception:
+            await sleep(0.5)
+            continue
+        break
 
 
 async def load_settings():
@@ -304,11 +306,21 @@ async def load_configurations():
         async with aiopen(".netrc", "w"):
             pass
 
-    await (
-        await create_subprocess_shell(
-            f"chmod 600 .netrc && cp .netrc /root/.netrc && chmod +x setpkgs.sh && ./setpkgs.sh {BinConfig.ARIA2_NAME} {BinConfig.SABNZBD_NAME}"
-        )
-    ).wait()
+    # Only start SABnzbd if USENET_SERVERS is configured
+    if Config.USENET_SERVERS:
+        await (
+            await create_subprocess_shell(
+                f"chmod 600 .netrc && cp .netrc /root/.netrc && chmod +x setpkgs.sh && ./setpkgs.sh {BinConfig.ARIA2_NAME} {BinConfig.SABNZBD_NAME}"
+            )
+        ).wait()
+        LOGGER.info("SABnzbd started.")
+    else:
+        await (
+            await create_subprocess_shell(
+                f"chmod 600 .netrc && cp .netrc /root/.netrc && {BinConfig.ARIA2_NAME} --allow-overwrite=true --enable-rpc=true --rpc-max-request-size=1024M --max-connection-per-server=10 --max-concurrent-downloads=1000 --split=10 --seed-ratio=0 --check-integrity=true --continue=true --daemon=true --disk-cache=40M --quiet=true --summary-interval=0 --max-upload-limit=1K"
+            )
+        ).wait()
+        LOGGER.info("SABnzbd skipped (USENET_SERVERS not configured). Aria2 started directly.")
 
     PORT = getenv("PORT", "") or Config.BASE_URL_PORT
     if PORT:
