@@ -17,11 +17,11 @@ class Config:
     DEFAULT_UPLOAD = "rc"
     DELETE_LINKS = False
     DEBRID_LINK_API = ""
-    DISABLE_TORRENTS = False
+    DISABLE_TORRENTS = False  # Set True to disable qBittorrent
     DISABLE_LEECH = False
     DISABLE_BULK = False
     DISABLE_MULTI = False
-    DISABLE_SEED = False
+    DISABLE_SEED = True  # Disabled to save memory
     DISABLE_FF_MODE = False
     EQUAL_SPLITS = False
     EXCLUDED_EXTENSIONS = ""
@@ -43,10 +43,10 @@ class Config:
     INCOMPLETE_TASK_NOTIFIER = False
     INDEX_URL = ""
     IS_TEAM_DRIVE = False
-    JD_EMAIL = ""
+    JD_EMAIL = ""  # Leave empty to disable JDownloader
     JD_PASS = ""
-    MEGA_EMAIL = ""
-    MEGA_PASSWORD = ""
+    MEGA_EMAIL = ""  # Leave empty to disable Mega
+    MEGA_PASSWORD = ""  # Leave empty to disable Mega
     DIRECT_LIMIT = 0
     MEGA_LIMIT = 0
     TORRENT_LIMIT = 0
@@ -62,7 +62,6 @@ class Config:
     ARCHIVE_LIMIT = 0
     STORAGE_LIMIT = 0
     LEECH_DUMP_CHAT = ""
-    AUTO_LEECH_GRP_ID = ""  # Group ID for auto leecher to send files
     LINKS_LOG_ID = ""
     MIRROR_LOG_ID = ""
     CLEAN_LOG_MSG = False
@@ -93,7 +92,7 @@ class Config:
     RSS_SIZE_LIMIT = 0
     SEARCH_API_LINK = ""
     SEARCH_LIMIT = 0
-    SEARCH_PLUGINS = []
+    SEARCH_PLUGINS = []  # Leave empty to disable torrent search
     SET_COMMANDS = True
     STATUS_LIMIT = 10
     STATUS_UPDATE_INTERVAL = 15
@@ -114,7 +113,7 @@ class Config:
     UPSTREAM_REPO = ""
     UPSTREAM_BRANCH = "master"
     UPDATE_PKGS = True
-    USENET_SERVERS = []
+    USENET_SERVERS = []  # Leave empty to disable SABnzbd
     USER_SESSION_STRING = ""
     USER_TRANSMISSION = True
     USE_SERVICE_ACCOUNTS = False
@@ -253,7 +252,7 @@ class Config:
 
 class BinConfig:
     ARIA2_NAME = "blitzfetcher"
-    QBIT_NAME = "qbittorrent-nox"
+    QBIT_NAME = "stormtorrent"
     FFMPEG_NAME = "mediaforge"
     RCLONE_NAME = "ghostdrive"
     SABNZBD_NAME = "newsripper"
