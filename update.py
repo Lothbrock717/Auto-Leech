@@ -117,4 +117,5 @@ if UPSTREAM_REPO:
 
 UPDATE_PKGS = config_file.get("UPDATE_PKGS", "True")
 if (isinstance(UPDATE_PKGS, str) and UPDATE_PKGS.lower() == "true") or UPDATE_PKGS:
+    scall("pip install -U -r requirements.txt -q --break-system-packages", shell=True)
     log_info("Successfully Updated all the Packages !")
